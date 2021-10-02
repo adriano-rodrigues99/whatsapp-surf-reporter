@@ -3,6 +3,7 @@ const axios = require("axios");
 const express = require("express");
 const Insta = require("scraper-instagram");
 require("dotenv").config();
+const TelegramBot = require("node-telegram-bot-api");
 
 const InstaClient = new Insta();
 
@@ -15,6 +16,8 @@ const config = {
   isGroup: true,
   sessionID: process.env.INSTA_SESSIONID, // instagram session id, find it at cookies
   minToProcess: 10, // minutes to process data
+  telegramChatId: process.env.TELEGRAM_CHAT_ID,
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
 };
 
 InstaClient.authBySessionId(config.sessionID).then((account) => {
@@ -44,6 +47,15 @@ function getAuthAxiosConfig() {
       Authorization: `Bearer ${config.token}`,
     },
   };
+}
+
+function sendTelegramMessage(message) {
+  if (config.telegramBotToken && config.telegramChatId) {
+    const bot = new TelegramBot(config.telegramBotToken, { polling: true });
+    bot.sendMessage(config.telegramChatId, message);
+  } else {
+    console.log(message);
+  }
 }
 
 async function sendImage(imageUrl, phone) {
@@ -129,6 +141,7 @@ async function findData() {
       if (!exist) {
         await processData(report);
         await writeData(report.shortcode);
+        sendTelegramMessage(`END PROCESS WITH SUCCESS - ${new Date()}`);
       }
       console.log("END PROCESS WITH SUCCESS - ", new Date());
     })
@@ -144,26 +157,39 @@ async function startAllSessionsAndCheckSession() {
     });
   const status = await client
     .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
-    .then(({ data: { status } }) => status)
-    .catch(() => false);
+    .then(({ data: { status } }) => status);
   return status;
 }
 
 const app = express();
 app.use(express.json());
 
-setTimeout(async () => {
-  const validSession = await startAllSessionsAndCheckSession();
-  if (validSession) {
-    await findData();
+async function runProcess() {
+  try {
+    const validSession = await startAllSessionsAndCheckSession();
+    if (validSession) {
+      await findData();
+    }
+  } catch ({ response }) {
+    const { path, data, status, statusText } = response;
+    sendTelegramMessage(
+      `❌ OCORREU UM ERRO ❌
+      ${JSON.stringify({
+        path,
+        data,
+        status,
+        statusText,
+      })}`
+    );
   }
+}
+
+setTimeout(async () => {
+  runProcess();
 }, 2000);
 
 setInterval(async () => {
-  const validSession = await startAllSessionsAndCheckSession();
-  if (validSession) {
-    await findData();
-  }
+  runProcess();
 }, [config.minToProcess * 60000]);
 
 app.listen(3001, () => console.log("🔥 Server started at localhost:3001"));
