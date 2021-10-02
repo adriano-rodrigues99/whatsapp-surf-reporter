@@ -7,27 +7,22 @@ require("dotenv").config();
 const InstaClient = new Insta();
 
 const config = {
-  // porta do https://github.com/wppconnect-team/wppconnect-server
-  baseUrl: "http://localhost:21465",
+  wppSecret: process.env.WPP_SECRET, // secret of wppconnect-server
+  baseUrl: "http://localhost:21465", // baseurl of wppconnect-server
   session: "sessao1",
-  // token do wppconnect-server
-  token: process.env.WPP_TOKEN,
-  // grupos que sera enviada as msg
-  phones: process.env.PHONES.split(","),
+  token: null,
+  phones: process.env.PHONES.split(","), // groups to send message
   isGroup: true,
-  // session do insta, pegado dentro dos cookies
-  sessionID: process.env.INSTA_SESSIONID,
+  sessionID: process.env.INSTA_SESSIONID, // instagram session id, find it at cookies
+  minToProcess: 10, // minutes to process data
 };
 
-InstaClient.authBySessionId(config.sessionID).then((account) =>
-  console.log("account")
-);
+InstaClient.authBySessionId(config.sessionID).then((account) => {
+  console.log(`Authenticated at instagram with user: ${account.first_name}`);
+});
 
 const client = axios.create({
   baseURL: `${config.baseUrl}/api`,
-  headers: {
-    Authorization: `Bearer ${config.token}`,
-  },
 });
 
 function getBase64(url) {
@@ -43,25 +38,41 @@ function getBase64(url) {
     );
 }
 
+function getAuthAxiosConfig() {
+  return {
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+    },
+  };
+}
+
 async function sendImage(imageUrl, phone) {
-  await client.post(`/${config.session}/send-file-base64`, {
-    phone,
-    base64: await getBase64(imageUrl),
-    isGroup: config.isGroup,
-  });
+  await client.post(
+    `/${config.session}/send-file-base64`,
+    {
+      phone,
+      base64: await getBase64(imageUrl),
+      isGroup: config.isGroup,
+    },
+    getAuthAxiosConfig()
+  );
 }
 
 async function sendMessage(message, phone) {
-  await client.post(`/${config.session}/send-message`, {
-    phone,
-    message,
-    isGroup: config.isGroup,
-  });
+  await client.post(
+    `/${config.session}/send-message`,
+    {
+      phone,
+      message,
+      isGroup: config.isGroup,
+    },
+    getAuthAxiosConfig()
+  );
 }
 
 async function getPostImages(postId) {
   const images = await InstaClient.getPost(postId)
-    .then((post) => post.contents.filter((c) => c.type === "photo"))
+    .then((post) => post.contents)
     .catch((err) => console.error(err));
   return images;
 }
@@ -69,7 +80,7 @@ async function getPostImages(postId) {
 async function processData(report) {
   for (const phone of config.phones) {
     const images = await getPostImages(report.shortcode);
-    if (images > 0) {
+    if (images.length > 1) {
       await sendMessage(report.caption, phone);
       for (const image of images) {
         await sendImage(image.url, phone);
@@ -82,22 +93,30 @@ async function processData(report) {
 }
 
 async function validateExistId(id) {
-  const rawdata = await fs.readFileSync("processed-data.json");
-  const data = JSON.parse(rawdata);
-  return data.includes(id);
+  try {
+    const rawdata = await fs.readFileSync(__dirname + `/processed-data.json`);
+    const data = JSON.parse(rawdata);
+    return data.includes(id);
+  } catch {
+    return false;
+  }
 }
 
 async function writeData(id) {
-  const rawdata = await fs.readFileSync("processed-data.json");
-  const existsData = JSON.parse(rawdata);
-  const newData = [...existsData, id];
+  try {
+    const rawdata = await fs.readFileSync(__dirname + `/processed-data.json`);
+    const existsData = JSON.parse(rawdata);
+    const newData = [...existsData, id];
 
-  const data = JSON.stringify(newData);
-  fs.writeFileSync("processed-data.json", data);
+    const data = JSON.stringify(newData);
+    fs.writeFileSync(__dirname + `/processed-data.json`, data);
+  } catch {
+    fs.writeFileSync(__dirname + `/processed-data.json`, JSON.stringify([id]));
+  }
 }
 
 async function findData() {
-  console.log("hora que esta rodando - ", new Date());
+  console.log("RUNNING TIME - ", new Date());
   InstaClient.getProfile("shorelinesurfskate")
     .then(async ({ lastPosts }) => {
       const data = lastPosts.filter(
@@ -111,19 +130,40 @@ async function findData() {
         await processData(report);
         await writeData(report.shortcode);
       }
+      console.log("END PROCESS WITH SUCCESS - ", new Date());
     })
     .catch(console.error);
+}
+
+async function startAllSessionsAndCheckSession() {
+  await client.post(`/${config.wppSecret}/start-all`);
+  await client
+    .post(`/${config.session}/${config.wppSecret}/generate-token`)
+    .then(({ data: { token } }) => {
+      config.token = token;
+    });
+  const status = await client
+    .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
+    .then(({ data: { status } }) => status)
+    .catch(() => false);
+  return status;
 }
 
 const app = express();
 app.use(express.json());
 
-setTimeout(() => {
-  findData();
+setTimeout(async () => {
+  const validSession = await startAllSessionsAndCheckSession();
+  if (validSession) {
+    await findData();
+  }
 }, 2000);
 
-setInterval(() => {
-  findData();
-}, [600000]);
+setInterval(async () => {
+  const validSession = await startAllSessionsAndCheckSession();
+  if (validSession) {
+    await findData();
+  }
+}, [config.minToProcess * 60000]);
 
 app.listen(3001, () => console.log("🔥 Server started at localhost:3001"));
