@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  surf-report:
+    build: ./
+    network_mode: "host"
+    container_name: surf-report
+    entrypoint: docker-entrypoint.sh yarn start
