@@ -138,9 +138,8 @@ async function findData() {
     const report = data[0];
     const exist = await validateExistId(report.shortcode);
     if (!exist) {
-      console.log(report);
-      // await processData(report);
-      // await writeData(report.shortcode);
+      await processData(report);
+      await writeData(report.shortcode);
       sendTelegramMessage(`END PROCESS WITH SUCCESS - ${new Date()}`);
     }
     console.log("END PROCESS WITH SUCCESS - ", new Date());
