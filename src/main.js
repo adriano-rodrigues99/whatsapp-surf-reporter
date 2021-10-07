@@ -20,9 +20,9 @@ const config = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
 };
 
-InstaClient.authBySessionId(config.sessionID).then((account) => {
-  console.log(`Authenticated at instagram with user: ${account.first_name}`);
-});
+// InstaClient.authBySessionId(config.sessionID).then((account) => {
+//   console.log(`Authenticated at instagram with user: ${account.first_name}`);
+// });
 
 const client = axios.create({
   baseURL: `${config.baseUrl}/api`,
@@ -139,13 +139,18 @@ async function findData() {
       const report = data[0];
       const exist = await validateExistId(report.shortcode);
       if (!exist) {
-        await processData(report);
-        await writeData(report.shortcode);
+        console.log("oiiii");
+        console.log(report);
+        // await processData(report);
+        // await writeData(report.shortcode);
         sendTelegramMessage(`END PROCESS WITH SUCCESS - ${new Date()}`);
       }
       console.log("END PROCESS WITH SUCCESS - ", new Date());
     })
-    .catch(console.error);
+    .catch((err) => {
+      console.log("aaaaaaa");
+      console.log(err);
+    });
 }
 
 async function startAllSessionsAndCheckSession() {
