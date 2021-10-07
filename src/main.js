@@ -156,10 +156,20 @@ async function startAllSessionsAndCheckSession() {
     .then(({ data: { token } }) => {
       config.token = token;
     });
-  await client.post(`/${config.session}/start-session`, getAuthAxiosConfig());
+  console.log(getAuthAxiosConfig(), config);
+  await client
+    .post(`/${config.session}/start-session`, getAuthAxiosConfig())
+    .catch((e) => {
+      console.log("eeeeeee");
+      console.log(e);
+    });
   const status = await client
     .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
-    .then(({ data: { status } }) => status);
+    .then(({ data: { status } }) => status)
+    .catch((a) => {
+      console.log("eeeaaaa");
+      console.log(a);
+    });
   return status;
 }
 
