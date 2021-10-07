@@ -156,7 +156,7 @@ async function startAllSessionsAndCheckSession() {
     .then(({ data: { token } }) => {
       config.token = token;
     });
-  await client.post(`/${config.session}/start-session`);
+  await client.post(`/${config.session}/start-session`, getAuthAxiosConfig());
   const status = await client
     .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
     .then(({ data: { status } }) => status);
