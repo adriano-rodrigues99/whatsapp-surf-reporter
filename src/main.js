@@ -7,10 +7,6 @@ const TelegramBot = require("node-telegram-bot-api");
 
 const InstaClient = new Insta();
 
-InstaClient.authBySessionId(config.sessionID).then((account) => {
-  console.log(`Authenticated at instagram with user: ${account.first_name}`);
-});
-
 const config = {
   wppSecret: process.env.WPP_SECRET, // secret of wppconnect-server
   baseUrl: "http://localhost:21465", // baseurl of wppconnect-server
@@ -23,6 +19,10 @@ const config = {
   telegramChatId: process.env.TELEGRAM_CHAT_ID,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
 };
+
+InstaClient.authBySessionId(config.sessionID).then((account) => {
+  console.log(`Authenticated at instagram with user: ${account.first_name}`);
+});
 
 const client = axios.create({
   baseURL: `${config.baseUrl}/api`,
