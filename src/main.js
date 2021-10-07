@@ -20,10 +20,6 @@ const config = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
 };
 
-// InstaClient.authBySessionId(config.sessionID).then((account) => {
-//   console.log(`Authenticated at instagram with user: ${account.first_name}`);
-// });
-
 const client = axios.create({
   baseURL: `${config.baseUrl}/api`,
 });
@@ -160,6 +156,7 @@ async function startAllSessionsAndCheckSession() {
     .then(({ data: { token } }) => {
       config.token = token;
     });
+  await client.post(`/${config.session}/start-session`);
   const status = await client
     .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
     .then(({ data: { status } }) => status);
