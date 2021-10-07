@@ -158,7 +158,7 @@ async function startAllSessionsAndCheckSession() {
     });
   console.log(getAuthAxiosConfig(), config);
   await client
-    .post(`/${config.session}/start-session`, getAuthAxiosConfig())
+    .post(`/${config.session}/start-session`, null, getAuthAxiosConfig())
     .catch((e) => {
       console.log("eeeeeee");
       console.log(e);
