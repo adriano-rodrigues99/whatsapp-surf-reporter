@@ -125,28 +125,22 @@ async function writeData(id) {
 
 async function findData() {
   console.log("RUNNING TIME - ", new Date());
-  InstaClient.getProfile("shorelinesurfskate")
-    .then(async ({ lastPosts }) => {
-      const data = lastPosts.filter(
-        (p) =>
-          p.caption.includes("PLANTÃO DAS ONDAS SHORELINE") ||
-          p.caption.includes("PREVISÃO DAS ONDAS SHORELINE")
-      );
-      const report = data[0];
-      const exist = await validateExistId(report.shortcode);
-      if (!exist) {
-        console.log("oiiii");
-        console.log(report);
-        // await processData(report);
-        // await writeData(report.shortcode);
-        sendTelegramMessage(`END PROCESS WITH SUCCESS - ${new Date()}`);
-      }
-      console.log("END PROCESS WITH SUCCESS - ", new Date());
-    })
-    .catch((err) => {
-      console.log("aaaaaaa");
-      console.log(err);
-    });
+  InstaClient.getProfile("shorelinesurfskate").then(async ({ lastPosts }) => {
+    const data = lastPosts.filter(
+      (p) =>
+        p.caption.includes("PLANTÃO DAS ONDAS SHORELINE") ||
+        p.caption.includes("PREVISÃO DAS ONDAS SHORELINE")
+    );
+    const report = data[0];
+    const exist = await validateExistId(report.shortcode);
+    if (!exist) {
+      console.log(report);
+      // await processData(report);
+      // await writeData(report.shortcode);
+      sendTelegramMessage(`END PROCESS WITH SUCCESS - ${new Date()}`);
+    }
+    console.log("END PROCESS WITH SUCCESS - ", new Date());
+  });
 }
 
 async function startAllSessionsAndCheckSession() {
@@ -156,20 +150,14 @@ async function startAllSessionsAndCheckSession() {
     .then(({ data: { token } }) => {
       config.token = token;
     });
-  console.log(getAuthAxiosConfig(), config);
-  await client
-    .post(`/${config.session}/start-session`, null, getAuthAxiosConfig())
-    .catch((e) => {
-      console.log("eeeeeee");
-      console.log(e);
-    });
+  await client.post(
+    `/${config.session}/start-session`,
+    null,
+    getAuthAxiosConfig()
+  );
   const status = await client
     .get(`/${config.session}/check-connection-session`, getAuthAxiosConfig())
-    .then(({ data: { status } }) => status)
-    .catch((a) => {
-      console.log("eeeaaaa");
-      console.log(a);
-    });
+    .then(({ data: { status } }) => status);
   return status;
 }
 
